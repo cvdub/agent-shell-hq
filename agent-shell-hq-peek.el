@@ -128,7 +128,7 @@ Uses the existing viewport buffer when one already exists, so its mode
   "Vector of cached Lucide activity signal images.")
 
 (defconst agent-shell-hq-peek--icon-sizes
-  '((idle . 14) (busy . 16) (blocked . 16) (dead . 12))
+  '((idle . 14) (busy . 14) (blocked . 14) (dead . 12))
   "Per-state image sizes in pixels, matching icons/ and the embedded SVGs.")
 
 (defconst agent-shell-hq-peek--busy-frame-count 60
@@ -161,12 +161,12 @@ Explicit dash lengths avoid depending on SVG pathLength support.")
 </svg>")
     (busy . "<svg
   xmlns=\"http://www.w3.org/2000/svg\"
-  width=\"16\"
-  height=\"16\"
+  width=\"14\"
+  height=\"14\"
   viewBox=\"1 1 22 22\"
   fill=\"none\"
   stroke=\"#C9922A\"
-  stroke-width=\"4\"
+  stroke-width=\"3.5\"
   stroke-linecap=\"round\"
   stroke-linejoin=\"round\"
 >
@@ -174,8 +174,8 @@ Explicit dash lengths avoid depending on SVG pathLength support.")
 </svg>")
     (blocked . "<svg
   xmlns=\"http://www.w3.org/2000/svg\"
-  width=\"16\"
-  height=\"16\"
+  width=\"14\"
+  height=\"14\"
   viewBox=\"1 1 22 22\"
   fill=\"none\"
   stroke=\"#C0392B\"

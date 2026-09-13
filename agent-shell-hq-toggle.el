@@ -277,7 +277,10 @@ against the bottom of the sidebar window regardless of session count."
     (with-current-buffer (get-buffer-create agent-shell-hq-toggle--sidebar-name)
       ;; Match the agent-shell SVG header's leading space and 6px inset.
       (setq-local left-margin-width 1
-                  left-fringe-width 6)
+                  left-fringe-width 6
+                  word-wrap t
+                  truncate-lines nil
+                  truncate-partial-width-windows nil)
       ;; Apply immediately to existing windows as well as future displays.
       (dolist (win (get-buffer-window-list (current-buffer) nil t))
         (set-window-margins win left-margin-width (cdr (window-margins win)))
@@ -317,7 +320,8 @@ against the bottom of the sidebar window regardless of session count."
                                      " "
                                      bname
                                      "\n")
-                             'agent-shell-hq-toggle-buffer buf)))))
+                             'agent-shell-hq-toggle-buffer buf
+                             'wrap-prefix (agent-shell-hq-peek--title-wrap-prefix 2 icon))))))
             (insert "\n")))
         (agent-shell-hq-toggle--insert-hint-footer)
         (setq agent-shell-hq-toggle--entries

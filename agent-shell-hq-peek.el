@@ -363,9 +363,24 @@ BUFFER is the source session, used to stop animation when it stops being busy."
 
 ;;;; Rendering
 
+(defun agent-shell-hq-peek--title-wrap-prefix (indent icon)
+  "Return continuation spacing for a title after INDENT spaces and ICON."
+  (concat (make-string indent ?\s)
+          (if (eq (car-safe (get-text-property 0 'display icon)) 'image)
+              ;; SVG margins reserve the same column for every state.
+              (propertize " " 'display
+                          `(space :width
+                                  (,(apply #'max
+                                           (mapcar #'cdr agent-shell-hq-peek--icon-sizes)))))
+            (make-string (string-width icon) ?\s))
+          " "))
+
 (defun agent-shell-hq-peek--render (groups)
   "Render GROUPS into the peek buffer."
   (with-current-buffer (get-buffer-create agent-shell-hq-peek--buffer-name)
+    (setq-local word-wrap t
+                truncate-lines nil
+                truncate-partial-width-windows nil)
     (let ((inhibit-read-only t))
       (erase-buffer)
       (setq agent-shell-hq-peek--entries nil)
@@ -387,7 +402,8 @@ BUFFER is the source session, used to stop animation when it stops being busy."
                                  " "
                                  bname
                                  "\n")
-                        'agent-shell-hq-peek-buffer buf))))
+                        'agent-shell-hq-peek-buffer buf
+                        'wrap-prefix (agent-shell-hq-peek--title-wrap-prefix 6 icon)))))
           (insert "\n")))
       (insert (propertize "    n/p navigate   RET select   q quit\n" 'face 'shadow))
       (insert "\n")

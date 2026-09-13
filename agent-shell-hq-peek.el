@@ -124,30 +124,97 @@ Uses the existing viewport buffer when one already exists, so its mode
 (defvar agent-shell-hq-peek--icon-cache nil
   "Alist of (STATE . IMAGE) for buffer status icons.")
 
+(defvar agent-shell-hq-peek--busy-frames nil
+  "Vector of cached Lucide activity signal images.")
+
+(defconst agent-shell-hq-peek--icon-sizes
+  '((idle . 14) (busy . 16) (blocked . 16) (dead . 12))
+  "Per-state image sizes in pixels, matching icons/ and the embedded SVGs.")
+
+(defconst agent-shell-hq-peek--busy-frame-count 60
+  "Number of frames in the three-second activity animation at 20fps.")
+
+(defconst agent-shell-hq-peek--busy-path-length 49.214485
+  "Length of Lucide's activity path in SVG user units.
+Measured from icons/busy.svg; update if the activity path changes.
+Explicit dash lengths avoid depending on SVG pathLength support.")
+
+(defvar-local agent-shell-hq-peek--animation-timer nil
+  "Timer animating busy icons in this HQ buffer.")
+
+(defvar-local agent-shell-hq-peek--animation-frame 0
+  "Current busy animation frame in this HQ buffer.")
+
 (defconst agent-shell-hq-peek--icon-svgs
-  '((idle . "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\">
-  <circle cx=\"10\" cy=\"10\" r=\"8.5\" fill=\"#4E9A72\"/>
-  <polyline points=\"4.5,10.5 8.5,14.5 16,5.5\"
-            stroke=\"white\" stroke-width=\"2.5\" fill=\"none\"
-            stroke-linecap=\"round\" stroke-linejoin=\"round\"/>
+  '((idle . "<svg
+  xmlns=\"http://www.w3.org/2000/svg\"
+  width=\"14\"
+  height=\"14\"
+  viewBox=\"2 2 20 20\"
+  fill=\"none\"
+  stroke=\"#4E9A72\"
+  stroke-width=\"4\"
+  stroke-linecap=\"round\"
+  stroke-linejoin=\"round\"
+>
+  <path d=\"M20 6 9 17l-5-5\" />
 </svg>")
-    (busy . "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\">
-  <circle cx=\"10\" cy=\"10\" r=\"8.5\" fill=\"#C9922A\"/>
-  <circle cx=\"10\" cy=\"10\" r=\"6\" fill=\"none\" stroke=\"white\" stroke-width=\"1.2\"/>
-  <line x1=\"10\" y1=\"10\" x2=\"10\" y2=\"5.5\" stroke=\"white\" stroke-width=\"1.8\" stroke-linecap=\"round\"/>
-  <line x1=\"10\" y1=\"10\" x2=\"13.5\" y2=\"10\" stroke=\"white\" stroke-width=\"1.8\" stroke-linecap=\"round\"/>
+    (busy . "<svg
+  xmlns=\"http://www.w3.org/2000/svg\"
+  width=\"16\"
+  height=\"16\"
+  viewBox=\"1 1 22 22\"
+  fill=\"none\"
+  stroke=\"#C9922A\"
+  stroke-width=\"4\"
+  stroke-linecap=\"round\"
+  stroke-linejoin=\"round\"
+>
+  <path d=\"M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2\" />
 </svg>")
-    (blocked . "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\">
-  <polygon points=\"10,2 18.5,17.5 1.5,17.5\" fill=\"#C0392B\"/>
-  <line x1=\"10\" y1=\"7\" x2=\"10\" y2=\"12.5\" stroke=\"white\" stroke-width=\"1.8\" stroke-linecap=\"round\"/>
-  <circle cx=\"10\" cy=\"14.5\" r=\"1\" fill=\"white\"/>
+    (blocked . "<svg
+  xmlns=\"http://www.w3.org/2000/svg\"
+  width=\"16\"
+  height=\"16\"
+  viewBox=\"1 1 22 22\"
+  fill=\"none\"
+  stroke=\"#C0392B\"
+  stroke-width=\"3\"
+  stroke-linecap=\"round\"
+  stroke-linejoin=\"round\"
+>
+  <path d=\"M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719\" />
+  <path d=\"M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3\" />
+  <path d=\"M12 17h.01\" />
 </svg>")
-    (dead . "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\">
-  <circle cx=\"10\" cy=\"10\" r=\"8.5\" fill=\"#C0392B\"/>
-  <line x1=\"6.5\" y1=\"6.5\" x2=\"13.5\" y2=\"13.5\" stroke=\"white\" stroke-width=\"2.5\" stroke-linecap=\"round\"/>
-  <line x1=\"13.5\" y1=\"6.5\" x2=\"6.5\" y2=\"13.5\" stroke=\"white\" stroke-width=\"2.5\" stroke-linecap=\"round\"/>
+    (dead . "<svg
+  xmlns=\"http://www.w3.org/2000/svg\"
+  width=\"12\"
+  height=\"12\"
+  viewBox=\"4 4 16 16\"
+  fill=\"none\"
+  stroke=\"#C0392B\"
+  stroke-width=\"3\"
+  stroke-linecap=\"round\"
+  stroke-linejoin=\"round\"
+>
+  <path d=\"M18 6 6 18\" />
+  <path d=\"m6 6 12 12\" />
 </svg>"))
-  "Inline SVG strings for each buffer state.")
+  "Lucide SVGs matching icons/.  See icons/LICENSE for attribution.")
+
+;; Reloading the module should also pick up changes to the embedded SVGs.
+(setq agent-shell-hq-peek--icon-cache nil
+      agent-shell-hq-peek--busy-frames nil)
+
+(defun agent-shell-hq-peek--create-icon-image (svg state)
+  "Create SVG for STATE, centered in a shared fixed-width icon column."
+  (let* ((size (alist-get state agent-shell-hq-peek--icon-sizes))
+         (column-width (apply #'max (mapcar #'cdr agent-shell-hq-peek--icon-sizes))))
+    ;; Horizontal margins make every image occupy the same width, while
+    ;; preserving each glyph's chosen size.  Dimensions are already pixels.
+    (create-image svg 'svg t :width size :height size :ascent 'center
+                  :margin (cons (/ (- column-width size) 2) 0) :scale 1.0)))
 
 (defun agent-shell-hq-peek--svg-icon (state)
   "Return the cached SVG image for STATE (`busy', `blocked', `idle', or `dead')."
@@ -155,7 +222,7 @@ Uses the existing viewport buffer when one already exists, so its mode
     (setq agent-shell-hq-peek--icon-cache
           (mapcar (lambda (pair)
                     (cons (car pair)
-                          (create-image (cdr pair) 'svg t :ascent 'center)))
+                          (agent-shell-hq-peek--create-icon-image (cdr pair) (car pair))))
                   agent-shell-hq-peek--icon-svgs)))
   (alist-get state agent-shell-hq-peek--icon-cache))
 
@@ -172,15 +239,88 @@ color survives outer `face' text properties in the render code."
                 :value-type (cons string face))
   :group 'agent-shell-hq-peek)
 
-(defun agent-shell-hq--icon (state)
+(defun agent-shell-hq--icon (state &optional buffer)
   "Return a propertized string displaying the icon for STATE.
 In GUI Emacs with SVG support, this is a space with a `display' SVG
-image property.  Otherwise, this is a Unicode character with a face."
+image property.  Otherwise, this is a Unicode character with a face.
+BUFFER is the source session, used to stop animation when it stops being busy."
   (if (and (display-graphic-p) (image-type-available-p 'svg))
-      (propertize " " 'display (agent-shell-hq-peek--svg-icon state))
+      (propertize " " 'display (agent-shell-hq-peek--svg-icon state)
+                  'agent-shell-hq-peek-busy-icon
+                  (and (eq state 'busy) (or buffer t)))
     (let ((fallback (or (alist-get state agent-shell-hq-fallback-icons)
                          '("?" . default))))
       (propertize (car fallback) 'face (cdr fallback) 'font-lock-face (cdr fallback)))))
+
+(defun agent-shell-hq-peek--busy-frame (index)
+  "Return cached activity frame INDEX with a traveling signal highlight."
+  (unless agent-shell-hq-peek--busy-frames
+    (setq agent-shell-hq-peek--busy-frames
+          (vconcat
+           (mapcar
+            (lambda (step)
+              (let* ((svg (alist-get 'busy agent-shell-hq-peek--icon-svgs))
+                     (start (1+ (string-match ">" svg)))
+                     (end (string-match "</svg>" svg))
+                     (path (substring svg start end))
+                     (length agent-shell-hq-peek--busy-path-length)
+                     (offset (* length (- (/ (float step)
+                                              agent-shell-hq-peek--busy-frame-count)
+                                           1))))
+                (agent-shell-hq-peek--create-icon-image
+                 (concat (substring svg 0 start)
+                         "<g opacity=\"0.3\">" path "</g>"
+                         (format "<g stroke-dasharray=\"%.6f %.6f\" stroke-dashoffset=\"%.6f\">"
+                                 (* length 0.22) (* length 0.78) offset)
+                         path "</g></svg>") 'busy)))
+            (number-sequence 0 (1- agent-shell-hq-peek--busy-frame-count))))))
+  (aref agent-shell-hq-peek--busy-frames index))
+
+(defun agent-shell-hq-peek--stop-animation ()
+  "Cancel this HQ buffer's animation timer."
+  (when (timerp agent-shell-hq-peek--animation-timer)
+    (cancel-timer agent-shell-hq-peek--animation-timer))
+  (setq agent-shell-hq-peek--animation-timer nil))
+
+(defun agent-shell-hq-peek--animate (buffer)
+  "Advance only busy icons in BUFFER when it is visible."
+  (save-match-data
+    (when (buffer-live-p buffer)
+      (with-current-buffer buffer
+        (when (get-buffer-window buffer 'visible)
+          (setq agent-shell-hq-peek--animation-frame
+                (mod (1+ agent-shell-hq-peek--animation-frame)
+                     agent-shell-hq-peek--busy-frame-count))
+          (with-silent-modifications
+            (let ((pos (point-min)))
+              (while (< pos (point-max))
+                (when-let ((source (get-text-property pos 'agent-shell-hq-peek-busy-icon)))
+                  (let ((state (if (bufferp source)
+                                   (agent-shell-hq-peek--buffer-state source)
+                                 'busy)))
+                    (put-text-property
+                     pos (1+ pos) 'display
+                     (if (eq state 'busy)
+                         (agent-shell-hq-peek--busy-frame agent-shell-hq-peek--animation-frame)
+                       (agent-shell-hq-peek--svg-icon state)))
+                    (unless (eq state 'busy)
+                      (remove-text-properties pos (1+ pos)
+                                              '(agent-shell-hq-peek-busy-icon nil)))))
+                (setq pos (next-single-property-change
+                           pos 'agent-shell-hq-peek-busy-icon nil (point-max))))))
+          (unless (text-property-not-all (point-min) (point-max)
+                                         'agent-shell-hq-peek-busy-icon nil)
+            (agent-shell-hq-peek--stop-animation)))))))
+
+(defun agent-shell-hq-peek--sync-animation ()
+  "Start or stop animation to match the busy icons in this HQ buffer."
+  (if (text-property-not-all (point-min) (point-max)
+                             'agent-shell-hq-peek-busy-icon nil)
+      (unless (timerp agent-shell-hq-peek--animation-timer)
+        (add-hook 'kill-buffer-hook #'agent-shell-hq-peek--stop-animation nil t)
+        (setq agent-shell-hq-peek--animation-timer
+              (run-with-timer 0.05 0.05 #'agent-shell-hq-peek--animate (current-buffer))))
+    (agent-shell-hq-peek--stop-animation)))
 
 (defun agent-shell-hq-peek--buffer-state (buf)
   "Return `busy', `blocked', `idle', or `dead' for BUF."
@@ -238,7 +378,7 @@ image property.  Otherwise, this is a Unicode character with a face."
                               'agent-shell-hq-peek-header t))
            (dolist (buf bufs)
              (let* ((state (agent-shell-hq-peek--buffer-state buf))
-                    (icon  (agent-shell-hq--icon state))
+                    (icon  (agent-shell-hq--icon state buf))
                     (bname (buffer-name buf)))
                 (push (list :buffer buf) agent-shell-hq-peek--entries)
                 (insert (propertize
@@ -253,7 +393,8 @@ image property.  Otherwise, this is a Unicode character with a face."
       (insert "\n")
       (setq agent-shell-hq-peek--entries (nreverse agent-shell-hq-peek--entries))
       (setq buffer-read-only t))
-    (goto-char (point-min))))
+    (goto-char (point-min))
+    (agent-shell-hq-peek--sync-animation)))
 
 ;;;; Highlight management
 

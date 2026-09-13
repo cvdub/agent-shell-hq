@@ -11,7 +11,7 @@ An add-on to [agent-shell](https://github.com/xenodium/agent-shell) that provide
 
 ![agent-shell-hq toggle demo](assets/toggle-demo.gif)
 
-`M-x agent-shell-hq-toggle` opens a dedicated workspace with a sidebar listing all your agent-shell buffers grouped by project. Each buffer shows a live status icon (idle/busy/blocked/dead). Navigating the sidebar immediately previews the selected buffer in the main window.
+`M-x agent-shell-hq-toggle` opens a dedicated workspace with a sidebar listing all your agent-shell buffers grouped by project. Each buffer shows a live [Lucide](https://lucide.dev/icons/) status icon (idle/busy/blocked/dead), with a three-second traveling activity signal in graphical Emacs. Terminal Emacs uses static Unicode icons. Navigating the sidebar immediately previews the selected buffer in the main window.
 
 Calling `agent-shell-hq-toggle` again returns you to your previous workspace.
 

@@ -265,8 +265,7 @@ against the bottom of the sidebar window regardless of session count."
     (when avail
       (insert (make-string (max 0 (- avail used-lines hint-lines)) ?\n)))
     (dolist (hint agent-shell-hq-toggle--hints)
-      (insert " "
-              (propertize (agent-shell-hq-toggle--format-hint-key (car hint))
+      (insert (propertize (agent-shell-hq-toggle--format-hint-key (car hint))
                           'face 'agent-shell-hq-toggle-hint-key)
               " "
               (propertize (cdr hint) 'face 'agent-shell-hq-toggle-hint-desc)
@@ -276,12 +275,23 @@ against the bottom of the sidebar window regardless of session count."
   "Render the sidebar buffer and rebuild the entries list."
   (let ((groups (agent-shell-hq-peek--grouped-buffers)))
     (with-current-buffer (get-buffer-create agent-shell-hq-toggle--sidebar-name)
+      ;; Match the agent-shell SVG header's leading space and 6px inset.
+      (setq-local left-margin-width 1
+                  left-fringe-width 6)
+      ;; Apply immediately to existing windows as well as future displays.
+      (dolist (win (get-buffer-window-list (current-buffer) nil t))
+        (set-window-margins win left-margin-width (cdr (window-margins win)))
+        (let ((fringes (window-fringes win)))
+          (set-window-fringes win left-fringe-width (nth 1 fringes)
+                              (nth 2 fringes) (nth 3 fringes))))
       (let ((inhibit-read-only t))
         (erase-buffer)
         (setq agent-shell-hq-toggle--entries nil)
         ;; Top heading
-        (insert (propertize " Agent Shell HQ\n"
+        (insert (propertize "Agent Shell HQ"
                             'face '(:inherit font-lock-function-name-face :weight bold)))
+        ;; Add half a line above the title, like agent-shell's header.
+        (insert (propertize "\n" 'line-height 1.5))
         (insert "\n")
         (dolist (group groups)
           (let* ((root      (car   group))
@@ -291,18 +301,18 @@ against the bottom of the sidebar window regardless of session count."
             ;; Project header — always a navigable entry
             (push (list :type 'project :root root) agent-shell-hq-toggle--entries)
             (insert (propertize
-                     (concat " " (if collapsed "▸ " "▾ ") pname "\n")
+                     (concat (if collapsed "▸ " "▾ ") pname "\n")
                      'face 'agent-shell-hq-toggle-project
                      'agent-shell-hq-toggle-root root))
             (unless collapsed
               (dolist (buf bufs)
                  (let* ((state (agent-shell-hq-peek--buffer-state buf))
-                        (icon  (agent-shell-hq--icon state))
+                        (icon  (agent-shell-hq--icon state buf))
                         (bname (buffer-name buf)))
                    (push (list :type 'buffer :buffer buf :root root)
                          agent-shell-hq-toggle--entries)
                     (insert (propertize
-                             (concat "    "
+                             (concat "  "
                                      icon
                                      " "
                                      bname
@@ -314,7 +324,8 @@ against the bottom of the sidebar window regardless of session count."
               (nreverse agent-shell-hq-toggle--entries))
         (setq buffer-read-only t)
         (setq-local cursor-type nil))
-      (use-local-map agent-shell-hq-toggle-map))
+      (use-local-map agent-shell-hq-toggle-map)
+      (agent-shell-hq-peek--sync-animation))
     (setq agent-shell-hq-toggle--state-snapshot
           (agent-shell-hq-toggle--capture-states))))
 
@@ -520,6 +531,9 @@ On a project header: toggle collapse."
 
 (defun agent-shell-hq-toggle--teardown ()
   "Clean up sidebar window and state."
+  (when-let ((sidebar (get-buffer agent-shell-hq-toggle--sidebar-name)))
+    (with-current-buffer sidebar
+      (agent-shell-hq-peek--stop-animation)))
   (when agent-shell-hq-toggle--refresh-timer
     (cancel-timer agent-shell-hq-toggle--refresh-timer)
     (setq agent-shell-hq-toggle--refresh-timer nil))

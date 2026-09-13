@@ -38,7 +38,7 @@ All public symbols use the `agent-shell-hq-` prefix; internal helpers use `agent
 
 **Toggle workspace** uses a named perspective (`*agent-shell*`). Toggle-off switches back to the recorded previous perspective — the workspace perspective is not destroyed.
 
-**SVG icons** are loaded from `icons/` at package load time and cached as Emacs `image` objects keyed by state (`idle`, `busy`, `blocked`, `dead`). Icons are regenerated on state change, not on a timer. Buffer state is derived from `agent-shell-status` / `shell-maker-busy`.
+**SVG icons** are Lucide assets in `icons/`, embedded in `agent-shell-hq-peek--icon-svgs`, and lazily cached as Emacs `image` objects keyed by state (`idle`, `busy`, `blocked`, `dead`). Icon sizes are per state (idle 14px, busy/blocked 16px, dead 12px), with a shared 16px column reserved through horizontal image margins. Icons are vertically centered with text. Both caches are cleared on module reload. Busy icons animate using 60 cached traveling-signal frames at 20fps (a 3-second loop). A buffer-local timer updates only icon display properties in visible HQ buffers and is cancelled on teardown, buffer kill, or when no busy icons remain. Keep the SVG files and inline copies in sync; attribution is in `icons/LICENSE`. Buffer state is derived from `agent-shell-status` / `shell-maker-busy`.
 
 **Buffer grouping** — `agent-shell-hq-peek--grouped-buffers` returns `(root project-name buffers)` triples sorted alphabetically by project name, with buffers within each group also sorted alphabetically by buffer name.
 

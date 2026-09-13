@@ -1,6 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">
-  <circle cx="10" cy="10" r="8.5" fill="#C9922A"/>
-  <circle cx="10" cy="10" r="6" fill="none" stroke="white" stroke-width="1.2"/>
-  <line x1="10" y1="10" x2="10" y2="5.5" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
-  <line x1="10" y1="10" x2="13.5" y2="10" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="16"
+  height="16"
+  viewBox="1 1 22 22"
+  fill="none"
+  stroke="#C9922A"
+  stroke-width="4"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2" />
 </svg>

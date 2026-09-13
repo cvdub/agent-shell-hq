@@ -509,6 +509,9 @@ On a project header: toggle collapse."
 
 (defun agent-shell-hq-toggle--setup ()
   "Build the sidebar + main window layout."
+  (when agent-shell-hq-toggle--refresh-timer
+    (cancel-timer agent-shell-hq-toggle--refresh-timer)
+    (setq agent-shell-hq-toggle--refresh-timer nil))
   (when (window-parameter (selected-window) 'window-side)
     (let ((non-side (seq-find (lambda (w) (not (window-parameter w 'window-side)))
                               (window-list))))
@@ -522,16 +525,22 @@ On a project header: toggle collapse."
             (window-parameters . ((no-delete-other-windows . t)))))))
     (setq agent-shell-hq-toggle--main-window
           (car (seq-filter (lambda (w) (not (eq w sidebar-win)))
-                           (window-list)))))
-  (setq agent-shell-hq-toggle--current-idx 0
-        agent-shell-hq-toggle--collapsed    nil)
-  (agent-shell-hq-toggle--render)
-  (agent-shell-hq-toggle--populate-perspective)
-  (agent-shell-hq-toggle--highlight 0)
-  (agent-shell-hq-toggle--preview-current)
-  (select-window (get-buffer-window agent-shell-hq-toggle--sidebar-name))
-  (setq agent-shell-hq-toggle--refresh-timer
-        (run-with-timer 2 2 #'agent-shell-hq-toggle--maybe-refresh)))
+                           (window-list))))
+    (setq agent-shell-hq-toggle--current-idx 0
+          agent-shell-hq-toggle--collapsed    nil)
+    (agent-shell-hq-toggle--render)
+    (agent-shell-hq-toggle--populate-perspective)
+    (agent-shell-hq-toggle--highlight 0)
+    (agent-shell-hq-toggle--preview-current)
+    ;; Rendering can run hooks or timers that replace the window layout.
+    ;; Keep the actual window instead of looking it up on a possibly new frame.
+    (unless (and (window-live-p sidebar-win)
+                 (eq (window-buffer sidebar-win)
+                     (get-buffer agent-shell-hq-toggle--sidebar-name)))
+      (user-error "HQ sidebar disappeared during setup; toggle again to retry"))
+    (select-window sidebar-win)
+    (setq agent-shell-hq-toggle--refresh-timer
+          (run-with-timer 2 2 #'agent-shell-hq-toggle--maybe-refresh))))
 
 (defun agent-shell-hq-toggle--teardown ()
   "Clean up sidebar window and state."
@@ -568,7 +577,8 @@ On a project header: toggle collapse."
 
 Opens a dedicated perspective with a sidebar listing all agent-shell
 buffers grouped by project.  Calling again returns to the previous
-perspective.
+perspective.  If the sidebar is missing, rebuild it instead.  Failed setup
+returns to the previous perspective so a subsequent toggle can retry.
 
 Sidebar keys:
   n/p    navigate and preview
@@ -583,15 +593,26 @@ Sidebar keys:
   (interactive)
   (unless (bound-and-true-p persp-mode)
     (persp-mode 1))
-  (if (string= (safe-persp-name (get-current-persp))
-               agent-shell-hq-toggle--persp-name)
-      (let ((prev agent-shell-hq-toggle--prev-persp))
-        (when prev (persp-switch prev))
-        (agent-shell-hq-toggle--teardown))
-    (setq agent-shell-hq-toggle--prev-persp
-          (safe-persp-name (get-current-persp)))
-    (persp-switch agent-shell-hq-toggle--persp-name)
-    (agent-shell-hq-toggle--setup)))
+  (let* ((in-hq (string= (safe-persp-name (get-current-persp))
+                         agent-shell-hq-toggle--persp-name))
+         (prev (if in-hq
+                   (or agent-shell-hq-toggle--prev-persp persp-nil-name)
+                 (safe-persp-name (get-current-persp)))))
+    (if (and in-hq (get-buffer-window agent-shell-hq-toggle--sidebar-name))
+        (progn
+          (agent-shell-hq-toggle--teardown)
+          (persp-switch prev))
+      ;; A perspective without its sidebar is incomplete, not already open.
+      (setq agent-shell-hq-toggle--prev-persp prev)
+      (condition-case err
+          (progn
+            (unless in-hq
+              (persp-switch agent-shell-hq-toggle--persp-name))
+            (agent-shell-hq-toggle--setup))
+        ((error quit)
+         (agent-shell-hq-toggle--teardown)
+         (persp-switch prev)
+         (signal (car err) (cdr err)))))))
 
 (provide 'agent-shell-hq-toggle)
 ;;; agent-shell-hq-toggle.el ends here

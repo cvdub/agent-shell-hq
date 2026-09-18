@@ -257,19 +257,21 @@ which will be formatted separated by slashes (e.g. \"n/p\")."
 
 (defun agent-shell-hq-toggle--insert-hint-footer ()
   "Insert the key/hint footer, padded with blank lines so it sits flush
-against the bottom of the sidebar window regardless of session count."
-  (let* ((win        (get-buffer-window (current-buffer)))
-         (used-lines (line-number-at-pos (point)))
-         (hint-lines (length agent-shell-hq-toggle--hints))
-         (avail      (and win (window-body-height win))))
-    (when avail
-      (insert (make-string (max 0 (- avail used-lines hint-lines)) ?\n)))
-    (dolist (hint agent-shell-hq-toggle--hints)
-      (insert (propertize (agent-shell-hq-toggle--format-hint-key (car hint))
-                          'face 'agent-shell-hq-toggle-hint-key)
-              " "
-              (propertize (cdr hint) 'face 'agent-shell-hq-toggle-hint-desc)
-              "\n"))))
+against the bottom of the sidebar window regardless of session count.
+Does nothing when `agent-shell-hq-show-help' is nil."
+  (when agent-shell-hq-show-help
+    (let* ((win        (get-buffer-window (current-buffer)))
+           (used-lines (line-number-at-pos (point)))
+           (hint-lines (length agent-shell-hq-toggle--hints))
+           (avail      (and win (window-body-height win))))
+      (when avail
+        (insert (make-string (max 0 (- avail used-lines hint-lines)) ?\n)))
+      (dolist (hint agent-shell-hq-toggle--hints)
+        (insert (propertize (agent-shell-hq-toggle--format-hint-key (car hint))
+                            'face 'agent-shell-hq-toggle-hint-key)
+                " "
+                (propertize (cdr hint) 'face 'agent-shell-hq-toggle-hint-desc)
+                "\n")))))
 
 (defun agent-shell-hq-toggle--render ()
   "Render the sidebar buffer and rebuild the entries list."

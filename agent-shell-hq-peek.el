@@ -37,6 +37,10 @@ Passed through to `posframe-show' as its OVERRIDE-PARAMETERS
 argument, e.g. to set (background-color . \"black\")."
   :type '(alist :key-type symbol :value-type sexp))
 
+(defcustom agent-shell-hq-show-help t
+  "When non-nil, show the key hint footer in the sidebar and peek panels."
+  :type 'boolean)
+
 ;;;; Faces
 
 (defface agent-shell-hq-peek-project
@@ -405,8 +409,9 @@ BUFFER is the source session, used to stop animation when it stops being busy."
                         'agent-shell-hq-peek-buffer buf
                         'wrap-prefix (agent-shell-hq-peek--title-wrap-prefix 6 icon)))))
           (insert "\n")))
-      (insert (propertize "    n/p navigate   RET select   q quit\n" 'face 'shadow))
-      (insert "\n")
+      (when agent-shell-hq-show-help
+        (insert (propertize "    n/p navigate   RET select   q quit\n" 'face 'shadow))
+        (insert "\n"))
       (setq agent-shell-hq-peek--entries (nreverse agent-shell-hq-peek--entries))
       (setq buffer-read-only t))
     (goto-char (point-min))

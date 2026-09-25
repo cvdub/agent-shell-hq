@@ -52,6 +52,7 @@ All public symbols use the `agent-shell-hq-` prefix; internal helpers use `agent
 
 - **Adding a new module**: follow the `agent-shell-hq-<module>.el` naming pattern; `require` it from `agent-shell-hq-toggle.el` or whichever consumer needs it.
 - **Changing buffer grouping logic**: the shared function is `agent-shell-hq-peek--grouped-buffers` in `agent-shell-hq-peek.el`; both peek and toggle call it.
+- **Line truncation**: `agent-shell-hq-truncate-lines` (default nil) sets `truncate-lines` in both the sidebar and peek buffers; peek must also pass it to `posframe-show` as `:lines-truncate`, since posframe resets `truncate-lines` on frame creation.
 - **Changing SVG icons**: icons live in `icons/` as `idle.svg`, `busy.svg`, `blocked.svg`, `dead.svg`. The cache is populated lazily on first use. In TUI Emacs (no image support), `agent-shell-hq-fallback-icons` provides Unicode character + face fallbacks (default: ✓/◔/⚠/✗ with `success`/`warning`/`error`/`error` faces via `font-lock-face`, matching agent-shell's own status icon style).
 - **Changing the titling model/CLI**: update the `agent-shell-hq-label-command` default in `agent-shell-hq-label.el`.
 - **Keymap changes**: peek keys are in `agent-shell-hq-peek-map`; toggle keys are in `agent-shell-hq-toggle-map`. The transient help menu (`agent-shell-hq-toggle-help`) must be kept in sync with the keymap manually.

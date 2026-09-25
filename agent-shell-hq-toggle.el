@@ -281,8 +281,8 @@ Does nothing when `agent-shell-hq-show-help' is nil."
       (setq-local left-margin-width 1
                   left-fringe-width 6
                   word-wrap t
-                  truncate-lines nil
-                  truncate-partial-width-windows nil)
+                  truncate-lines agent-shell-hq-truncate-lines
+                  truncate-partial-width-windows agent-shell-hq-truncate-lines)
       ;; Apply immediately to existing windows as well as future displays.
       (dolist (win (get-buffer-window-list (current-buffer) nil t))
         (set-window-margins win left-margin-width (cdr (window-margins win)))

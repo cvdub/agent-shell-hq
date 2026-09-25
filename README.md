@@ -128,6 +128,8 @@ In `config.el`:
   (agent-shell-hq-peek-height 60)
   ;; Extra frame parameters for the peek posframe, e.g. background color
   (agent-shell-hq-peek-parameters '((background-color . "black")))
+  ;; Truncate long buffer names instead of wrapping them
+  (agent-shell-hq-truncate-lines nil)
   ;; CLI command that receives the prompt as its final argument
   (agent-shell-hq-label-command '("claude" "-p" "--model" "haiku"))
   ;; Characters of buffer content (from the end) used as context for the title

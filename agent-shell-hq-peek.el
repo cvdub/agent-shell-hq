@@ -41,6 +41,11 @@ argument, e.g. to set (background-color . \"black\")."
   "When non-nil, show the key hint footer in the sidebar and peek panels."
   :type 'boolean)
 
+(defcustom agent-shell-hq-truncate-lines nil
+  "When non-nil, truncate long buffer names in the sidebar and peek panels.
+When nil, long names wrap onto continuation lines aligned after the icon."
+  :type 'boolean)
+
 ;;;; Faces
 
 (defface agent-shell-hq-peek-project
@@ -383,8 +388,8 @@ BUFFER is the source session, used to stop animation when it stops being busy."
   "Render GROUPS into the peek buffer."
   (with-current-buffer (get-buffer-create agent-shell-hq-peek--buffer-name)
     (setq-local word-wrap t
-                truncate-lines nil
-                truncate-partial-width-windows nil)
+                truncate-lines agent-shell-hq-truncate-lines
+                truncate-partial-width-windows agent-shell-hq-truncate-lines)
     (let ((inhibit-read-only t))
       (erase-buffer)
       (setq agent-shell-hq-peek--entries nil)
@@ -554,6 +559,7 @@ n/p navigates, RET selects, g/q/C-g quits."
                    :internal-border-width 4
                    :border-color          (face-foreground 'shadow nil t)
                    :accept-focus          t
+                   :lines-truncate        agent-shell-hq-truncate-lines
                    :override-parameters   agent-shell-hq-peek-parameters)
     (agent-shell-hq-peek--preview-current)
     (let ((pf-frame (buffer-local-value 'posframe--frame

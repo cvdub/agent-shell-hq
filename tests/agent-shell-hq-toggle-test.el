@@ -60,4 +60,16 @@
     (should (equal (safe-persp-name (get-current-persp)) "hq-test-origin"))
     (should-not agent-shell-hq-toggle--refresh-timer)))
 
+(ert-deftest agent-shell-hq-toggle-render-honors-truncate-lines ()
+  (cl-letf (((symbol-function 'agent-shell-hq-peek--grouped-buffers)
+             (lambda () nil)))
+    (unwind-protect
+        (dolist (truncate '(t nil))
+          (let ((agent-shell-hq-truncate-lines truncate))
+            (agent-shell-hq-toggle--render)
+            (with-current-buffer agent-shell-hq-toggle--sidebar-name
+              (should (eq truncate-lines truncate))
+              (should (eq truncate-partial-width-windows truncate)))))
+      (kill-buffer agent-shell-hq-toggle--sidebar-name))))
+
 ;;; agent-shell-hq-toggle-test.el ends here

@@ -225,6 +225,7 @@ Key variables:
 | `agent-shell-hq-peek-width`          | integer | 52       | Posframe width in columns    |
 | `agent-shell-hq-peek-height`         | integer | 60       | Posframe max height in rows  |
 | `agent-shell-hq-toggle-sidebar-width`| integer | 36       | Sidebar width in columns     |
+| `agent-shell-hq-truncate-lines`      | boolean | nil      | Truncate long names instead of wrapping |
 
 ---
 
